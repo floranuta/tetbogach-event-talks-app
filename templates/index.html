@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BigQuery Release Notes</title>
+  <meta name="description" content="Live feed viewer for Google BigQuery release notes with one-click tweeting." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <svg class="bq-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="48" height="48" rx="10" fill="url(#bq-grad)"/>
+          <path d="M24 10L36 17V31L24 38L12 31V17L24 10Z" fill="white" fill-opacity="0.15"/>
+          <path d="M24 14L33 19.5V30.5L24 36L15 30.5V19.5L24 14Z" fill="white" fill-opacity="0.25"/>
+          <path d="M20 22H28M20 27H25" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="bq-grad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#1a73e8"/>
+              <stop offset="1" stop-color="#0d47a1"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-title">BigQuery</span>
+          <span class="brand-subtitle">Release Notes</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="last-updated" class="last-updated"></span>
+        <button id="refresh-btn" class="btn-refresh" aria-label="Refresh release notes">
+          <svg id="refresh-icon" class="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          <span class="btn-refresh-label">Refresh</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Toolbar / filter bar ── -->
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="search-input" class="search-input" type="search"
+               placeholder="Search release notes…" aria-label="Search release notes" />
+      </div>
+      <div id="filter-tags" class="filter-tags" role="group" aria-label="Filter by category"></div>
+      <span id="entry-count" class="entry-count"></span>
+    </div>
+  </div>
+
+  <!-- ── Main content ── -->
+  <main id="main" class="main-content">
+
+    <!-- Skeleton / loading state -->
+    <div id="skeleton-list" class="card-list" aria-live="polite" aria-label="Loading">
+      <div class="skeleton-card"><div class="sk sk-date"></div><div class="sk sk-line l80"></div><div class="sk sk-line l60"></div><div class="sk sk-line l90"></div></div>
+      <div class="skeleton-card"><div class="sk sk-date"></div><div class="sk sk-line l70"></div><div class="sk sk-line l50"></div></div>
+      <div class="skeleton-card"><div class="sk sk-date"></div><div class="sk sk-line l80"></div><div class="sk sk-line l65"></div><div class="sk sk-line l40"></div></div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-state" class="error-state hidden" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <h2>Could not load release notes</h2>
+      <p id="error-message" class="error-detail"></p>
+      <button class="btn-retry" onclick="loadNotes()">Try again</button>
+    </div>
+
+    <!-- Empty search result -->
+    <div id="empty-state" class="empty-state hidden" role="status">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+      <p>No results match your search.</p>
+    </div>
+
+    <!-- Release note cards -->
+    <div id="cards-list" class="card-list hidden" aria-label="Release notes"></div>
+
+  </main>
+
+  <!-- ── Tweet Modal ── -->
+  <div id="tweet-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title">Tweet this update</h2>
+        <button id="modal-close" class="modal-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <p class="modal-date" id="modal-entry-date"></p>
+
+      <label for="tweet-text" class="modal-label">Your tweet</label>
+      <textarea id="tweet-text" class="tweet-textarea" rows="6" maxlength="280"
+                aria-describedby="char-count"></textarea>
+      <div class="tweet-footer">
+        <span id="char-count" class="char-count">0 / 280</span>
+        <div class="modal-actions">
+          <button id="modal-cancel" class="btn-cancel">Cancel</button>
+          <button id="tweet-btn" class="btn-tweet">
+            <svg class="x-logo" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L2.012 2.25h6.956l4.255 5.626L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+            </svg>
+            Post on X
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/script.js"></script>
+</body>
+</html>
