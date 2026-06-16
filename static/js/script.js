@@ -153,16 +153,28 @@ function buildCardHTML(entry, index) {
           </svg>
           View on Google Cloud Docs
         </a>
-        <button class="btn-tweet-card"
-                data-date="${escAttr(entry.friendly_date)}"
-                data-text="${escAttr(entry.tweet_text)}"
-                data-link="${escAttr(entry.link)}"
-                aria-label="Tweet about ${escAttr(entry.friendly_date)} release notes">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L2.012 2.25h6.956l4.255 5.626L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
-          </svg>
-          Tweet this
-        </button>
+        <div class="card-actions">
+          <button class="btn-copy-card"
+                  data-text="${escAttr(entry.tweet_text)}"
+                  aria-label="Copy update text to clipboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span class="copy-label">Copy</span>
+          </button>
+          <button class="btn-tweet-card"
+                  data-date="${escAttr(entry.friendly_date)}"
+                  data-text="${escAttr(entry.tweet_text)}"
+                  data-link="${escAttr(entry.link)}"
+                  aria-label="Tweet about ${escAttr(entry.friendly_date)} release notes">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L2.012 2.25h6.956l4.255 5.626L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+            </svg>
+            Tweet this
+          </button>
+        </div>
       </div>
     </article>
   `;
@@ -191,6 +203,26 @@ function renderCards(entries) {
         btn.dataset.text,
         btn.dataset.link,
       );
+    });
+  });
+
+  // Attach copy button listeners
+  cardsList.querySelectorAll('.btn-copy-card').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.text;
+      const label = btn.querySelector('.copy-label');
+      try {
+        await navigator.clipboard.writeText(text);
+        const originalText = label.textContent;
+        label.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          label.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
     });
   });
 }
@@ -364,6 +396,60 @@ tweetBtn.addEventListener('click', () => {
   window.open(url, 'tweet-window', 'width=600,height=450,resizable=yes,scrollbars=yes');
   closeTweetModal();
 });
+
+// ── Export to CSV feature ──────────────────────────────────────────────────
+const exportCsvBtn = document.getElementById('export-csv-btn');
+
+function escapeCSV(val) {
+  if (val === null || val === undefined) return '';
+  let str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    str = '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+function exportToCSV() {
+  const query = searchInput.value.trim().toLowerCase();
+  let filtered = allEntries;
+  
+  if (activeCategory) {
+    filtered = filtered.filter(e => e.categories.includes(activeCategory));
+  }
+  
+  if (query) {
+    filtered = filtered.filter(e => {
+      const plain = stripHtml(e.content_html).toLowerCase();
+      return plain.includes(query) || e.friendly_date.toLowerCase().includes(query);
+    });
+  }
+
+  if (filtered.length === 0) return;
+
+  const headers = ['Date', 'Category', 'Update Text (Plain)', 'Link'];
+  const rows = filtered.map(e => [
+    e.friendly_date,
+    e.category || (e.categories && e.categories[0]) || 'Update',
+    stripHtml(e.content_html),
+    e.link
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(escapeCSV).join(','))
+  ].join('\r\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `bigquery_release_notes_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+exportCsvBtn.addEventListener('click', exportToCSV);
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 loadNotes();

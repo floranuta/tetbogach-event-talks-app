@@ -409,6 +409,63 @@ body {
   transform: scale(1.03);
 }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-copy-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-copy-card svg { width: 14px; height: 14px; }
+.btn-copy-card:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border-hover);
+  color: var(--text);
+  transform: scale(1.03);
+}
+.btn-copy-card.copied {
+  background: var(--green-dim);
+  border-color: rgba(52, 168, 83, 0.4);
+  color: var(--green);
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-export:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+.btn-export svg { width: 14px; height: 14px; }
+
+
 /* ─── Skeleton loading ────────────────────────────────────────────── */
 .skeleton-card {
   background: var(--surface);
